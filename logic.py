@@ -2,8 +2,27 @@
 import os
 from tkinter import filedialog, messagebox
 from db import insert_document, delete_document
+from db import update_description
+from db import update_doc_details
 
 SUPPORTED_TYPES = [".pdf", ".docx", ".xlsx"]
+
+
+def save_document_details(doc_id, desc, tags):
+    if not desc.strip():
+        messagebox.showwarning("Warning", "Description cannot be empty")
+        return False
+
+    update_doc_details(doc_id, desc, tags)
+    return True
+
+def update_doc_description(doc_id, desc):
+    if not desc.strip():
+        messagebox.showwarning("Warning", "Description cannot be empty")
+        return False
+
+    update_description(doc_id, desc)
+    return True
 
 def choose_and_add(description):
     path = filedialog.askopenfilename(
