@@ -1,4 +1,6 @@
 # ui.py
+import json
+import os
 import tkinter as tk
 from tkinter import ttk
 from db import fetch_documents
@@ -17,9 +19,69 @@ class DocumentManagerUI:
         self.build_buttons()
 
         self.refresh()
+        self.root.bind("<Return>", lambda e: self.open_selected())
+        self.root.bind("<Delete>", lambda e: self.remove_selected())
+        self.root.bind("<Control-e>", lambda e: self.edit_description())
+        self.root.bind("<Control-f>", lambda e: self.focus_search())
+        self.root.bind("<Escape>", lambda e: self.clear_search())
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def focus_search(self):
+        self.search_entry.focus()
+
+    def clear_search(self):
+        self.search_var.set("")
+        self.type_var.set("ALL")
+        self.refresh()
+
+
+    def on_close(self):
+        self.save_column_widths()
+        self.root.destroy()
 
     def on_search_change(self, event=None):
         self.refresh()
+
+    def load_column_widths(self):
+        if not os.path.exists("ui_state.json"):
+            return
+
+        with open("ui_state.json", "r") as f:
+            data = json.load(f)
+
+        for col, width in data.get("columns", {}).items():
+            if col in self.tree["columns"]:
+                self.tree.column(col, width=width)
+
+
+    def save_column_widths(self):
+        data = {
+            "columns": {
+                col: self.tree.column(col)["width"]
+                for col in self.tree["columns"]
+            }
+        }
+        with open("ui_state.json", "w") as f:
+            json.dump(data, f)
+
+
+    def sort_column(self, col, reverse):
+        data = [
+            (self.tree.set(k, col), k)
+            for k in self.tree.get_children("")
+        ]
+
+        # numeric sort for ID
+        if col == "ID":
+            data.sort(key=lambda t: int(t[0]), reverse=reverse)
+        else:
+            data.sort(key=lambda t: t[0].lower(), reverse=reverse)
+
+        for index, (_, k) in enumerate(data):
+            self.tree.move(k, "", index)
+
+        # toggle sort direction on next click
+        self.tree.heading(col, command=lambda: self.sort_column(col, not reverse))
 
 
     def setup_style(self):
@@ -88,8 +150,6 @@ class DocumentManagerUI:
 
         open_search_window(self.root, on_files_added=on_files_added)
 
-
-
     def build_top_bar(self):
         bar = ttk.Frame(self.root, padding=10)
         bar.pack(fill="x")
@@ -97,9 +157,13 @@ class DocumentManagerUI:
         self.search_var = tk.StringVar()
         self.type_var = tk.StringVar(value="ALL")
 
-        search_entry = ttk.Entry(bar, textvariable=self.search_var, width=40)
-        search_entry.pack(side="left", padx=5)
-        search_entry.bind("<KeyRelease>", self.on_search_change)
+        self.search_entry = ttk.Entry(
+            bar,
+            textvariable=self.search_var,
+            width=40
+        )
+        self.search_entry.pack(side="left", padx=5)
+        self.search_entry.bind("<KeyRelease>", self.on_search_change)
 
         type_combo = ttk.Combobox(
             bar,
@@ -110,22 +174,87 @@ class DocumentManagerUI:
         )
         type_combo.pack(side="left", padx=5)
         type_combo.bind("<<ComboboxSelected>>", lambda e: self.refresh())
-        ttk.Button(bar, text="🔍 Search System", command=self.open_search)\
-            .pack(side="left", padx=5)
+
+        ttk.Button(
+            bar,
+            text="🔍 Search System",
+            command=self.open_search
+        ).pack(side="left", padx=5)
 
 
     def on_double_click(self, event):
         self.edit_description()
 
+    def show_context_menu(self, event):
+        item = self.tree.identify_row(event.y)
+        if item:
+            self.tree.selection_set(item)
+            self.menu.tk_popup(event.x_root, event.y_root)
+
 
     def build_table(self):
         cols = ("ID", "Name", "Type", "Description", "Tags")
         self.tree = ttk.Treeview(self.root, columns=cols, show="headings")
-        for c in cols:
-            self.tree.heading(c, text=c)
-            self.tree.column(c, anchor="w")
+
+        # ID – small, fixed
+        for col in ("ID", "Name", "Type", "Description", "Tags"):
+            self.tree.heading(
+                col,
+                text=col,
+                command=lambda c=col: self.sort_column(c, False)
+            )
+        self.tree.column("ID", width=50, anchor="center", stretch=False)
+
+        # Name – wide
+        for col in ("ID", "Name", "Type", "Description", "Tags"):
+            self.tree.heading(
+                col,
+                text=col,
+                command=lambda c=col: self.sort_column(c, False)
+            )
+        self.tree.column("Name", width=220, anchor="w", stretch=True)
+
+        # Type – small
+        for col in ("ID", "Name", "Type", "Description", "Tags"):
+            self.tree.heading(
+                col,
+                text=col,
+                command=lambda c=col: self.sort_column(c, False)
+            )
+        self.tree.column("Type", width=70, anchor="center", stretch=False)
+
+        # Description – medium
+        for col in ("ID", "Name", "Type", "Description", "Tags"):
+            self.tree.heading(
+                col,
+                text=col,
+                command=lambda c=col: self.sort_column(c, False)
+            )
+        self.tree.column("Description", width=260, anchor="w", stretch=True)
+
+        # Tags – visible and usable
+        for col in ("ID", "Name", "Type", "Description", "Tags"):
+            self.tree.heading(
+                col,
+                text=col,
+                command=lambda c=col: self.sort_column(c, False)
+            )
+        self.tree.column("Tags", width=180, anchor="w", stretch=True)
+
         self.tree.pack(fill="both", expand=True, padx=10)
         self.tree.bind("<Double-1>", self.on_double_click)
+        self.menu = tk.Menu(self.root, tearoff=0)
+        self.menu.add_command(label="📂 Open", command=self.open_selected)
+        self.menu.add_command(label="✏ Edit Description", command=self.edit_description)
+        self.menu.add_separator()
+        self.menu.add_command(label="🗑 Remove", command=self.remove_selected)
+
+        self.tree.bind("<Button-3>", self.show_context_menu)
+
+        self.load_column_widths()
+
+
+
 
 
     def build_buttons(self):
