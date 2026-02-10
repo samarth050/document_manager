@@ -18,6 +18,10 @@ class DocumentManagerUI:
 
         self.refresh()
 
+    def on_search_change(self, event=None):
+        self.refresh()
+
+
     def setup_style(self):
         style = ttk.Style(self.root)
         style.theme_use("clam")
@@ -82,18 +86,20 @@ class DocumentManagerUI:
         self.search_var = tk.StringVar()
         self.type_var = tk.StringVar(value="ALL")
 
-        ttk.Entry(bar, textvariable=self.search_var, width=40)\
-            .pack(side="left", padx=5)
-        ttk.Combobox(
+        search_entry = ttk.Entry(bar, textvariable=self.search_var, width=40)
+        search_entry.pack(side="left", padx=5)
+        search_entry.bind("<KeyRelease>", self.on_search_change)
+
+        type_combo = ttk.Combobox(
             bar,
             textvariable=self.type_var,
             values=["ALL", ".pdf", ".docx", ".xlsx"],
             width=10,
             state="readonly"
-        ).pack(side="left", padx=5)
+        )
+        type_combo.pack(side="left", padx=5)
+        type_combo.bind("<<ComboboxSelected>>", lambda e: self.refresh())
 
-        ttk.Button(bar, text="Search", command=self.refresh)\
-            .pack(side="left", padx=5)
 
     def on_double_click(self, event):
         self.edit_description()
