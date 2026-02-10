@@ -27,7 +27,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             file_name TEXT NOT NULL,
             file_path TEXT UNIQUE NOT NULL,
-            file_type TEXT,
+            file_type TEXT NOT NULL,
             description TEXT,
             tags TEXT,
             added_on DATETIME DEFAULT CURRENT_TIMESTAMP

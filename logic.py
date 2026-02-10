@@ -7,6 +7,20 @@ from db import update_doc_details
 
 SUPPORTED_TYPES = [".pdf", ".docx", ".xlsx"]
 
+def add_scanned_files(file_list):
+    for f in file_list:
+        try:
+            ext = os.path.splitext(f["path"])[1].lower().strip()
+
+            insert_document(
+                os.path.basename(f["path"]),
+                f["path"],
+                ext,
+                "Added via system search"
+            )
+
+        except Exception:
+            pass
 
 def save_document_details(doc_id, desc, tags):
     if not desc.strip():
@@ -31,7 +45,7 @@ def choose_and_add(description):
     if not path:
         return False
 
-    ext = os.path.splitext(path)[1].lower()
+    ext = os.path.splitext(path)[1].lower().strip()
     if ext not in SUPPORTED_TYPES:
         messagebox.showerror("Invalid file", "Unsupported file type")
         return False

@@ -78,6 +78,17 @@ class DocumentManagerUI:
 
         ttk.Button(popup, text="Save", command=save).pack(pady=15)
 
+    def open_search(self):
+        from search_ui import open_search_window
+
+        def on_files_added():
+            self.search_var.set("")      # clear live search
+            self.type_var.set("ALL")     # reset filter
+            self.refresh()
+
+        open_search_window(self.root, on_files_added=on_files_added)
+
+
 
     def build_top_bar(self):
         bar = ttk.Frame(self.root, padding=10)
@@ -99,6 +110,8 @@ class DocumentManagerUI:
         )
         type_combo.pack(side="left", padx=5)
         type_combo.bind("<<ComboboxSelected>>", lambda e: self.refresh())
+        ttk.Button(bar, text="🔍 Search System", command=self.open_search)\
+            .pack(side="left", padx=5)
 
 
     def on_double_click(self, event):
